@@ -1,0 +1,99 @@
+import time , csv, os.path, glob
+import numpy as np
+import tensorflow as tf
+import keras.backend as K
+from keras import optimizers
+from keras.preprocessing import image
+import matplotlib.pyplot as plt
+import matplotlib.image as mplt
+from keras import layers
+from keras import models
+import scipy.misc as msc
+import scipy.ndimage.morphology as morf
+
+
+class MaskMaker():
+    def __init__(self, shape):
+        self.he= shape[0]
+        self.wi = shape[1]
+        self.fronte = image.load_img('gali1.jpeg',target_size=(self.he,self.wi))
+        self.retro = image.load_img('gali2.jpeg',target_size=(self.he,self.wi))
+        self.x = image.img_to_array(self.fronte)        
+        self.x = (self.x / 255.).astype(np.float32)
+        self.y = image.img_to_array(self.retro)        
+        self.y = (self.y / 255.).astype(np.float32)
+        self.createMask()
+        
+    def createMask(self):
+        self.image_tensor=self.x
+        self.image_tensor = np.expand_dims(self.image_tensor,axis=0)
+        self.y = np.expand_dims(self.y, axis = 0)        
+        self.image_tensor = np.append(self.image_tensor,self.y,axis=0)
+        self.image_tensor = np.expand_dims(self.image_tensor, axis=0)
+        input_imt = layers.Input(shape=(2,self.he, self.wi, 3))
+        print(input_imt.shape)
+        network_output = self.firstMaskElab(input_imt)
+        
+        modello= models.Model(inputs=[input_imt], outputs=[network_output]) 
+        modello.compile(loss = 'binary_crossentropy',
+                   optimizer = optimizers.RMSprop(lr=1e-4),
+                   metrics=['acc'])
+        
+        er = modello.predict(self.image_tensor)             
+        
+        self.verso = er[0][1] 
+    def firstMaskElab(self,image_tensor):        
+        x = self.secondMaskElab(image_tensor)
+        for i in range(25):
+            x= self.secondMaskElab(x)
+        return x
+    
+    def secondMaskElab(self,y):
+        groups=[]
+        groups2=[]
+        groups3=[] 
+        for j in range(2):
+            group = layers.Lambda(lambda z: z[:,j,:,:])(y) 
+            groups.append(group)          
+        group2 = layers.Average()([groups[0], groups[1]])        
+        groups2.append(group2)         
+        group2 = layers.Subtract()([groups[0], groups[1]])
+        group2= layers.AveragePooling2D(pool_size=(1,1),strides=(1,1))(group2)  
+        groups2.append(group2)       
+        for gr in groups2:
+            gr = layers.Lambda(lambda i : K.expand_dims(i, axis=1))(gr)
+            groups3.append(gr)
+        y= layers.concatenate(groups3,axis=1)
+        y= layers.BatchNormalization()(y)  
+        return y
+    
+def maskApplying(y,x):
+    pattern = np.amax(x,axis=(0,1))
+    print(y.shape)
+    print(x.shape)
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            if (y[i][j]>0):
+                x[i][j]=pattern
+    return x 
+def rgb2gray(rgb):
+    r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
+    gray = 0.2989 *r + 0.5870 * g + 0.1140 * b
+    return gray  
+def bin_action(y):
+    output = rgb2gray(y)
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            if (output[i][j]<trashold):
+                output[i][j]=0
+            else:
+                output[i][j]= 1           
+    return output 
+
+trashold = 0.65
+shape = [1668, 1179]
+mask = MaskMaker(shape)
+maskBin = bin_action(mask.verso)
+originalImage = mask.y[0]
+finalImage = maskApplying(maskBin,originalImage)
+msc.toimage(finalImage , cmin=0.0, cmax=1).save('risultatomaschera.jpg')
