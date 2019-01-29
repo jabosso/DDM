@@ -1,0 +1,55 @@
+import time
+import os.path
+import numpy as np
+import csv
+import tensorflow as tf
+import keras.backend as K
+from keras import optimizers
+from keras.preprocessing import image
+import matplotlib.pyplot as plt
+import matplotlib.image as mplt
+from keras import layers
+from keras import models
+import glob
+import scipy.misc as msc
+import scipy.ndimage.morphology as morf
+
+
+class Carnival():
+    def __init__(self):
+        self.he= 1668
+        self.wi = 1179
+        self.trashold = 0.65 
+        self.originale =  image.load_img('gali2.jpeg', target_size= (self.he,self.wi))
+        self.pulcinella = image.load_img('maschera.jpg', target_size= (self.he, self.wi))
+        self.x = image.img_to_array(self.originale)        
+        self.x = (self.x / 255.).astype(np.float32)
+        self.y = image.img_to_array(self.pulcinella)        
+        self.y = (self.y / 255.).astype(np.float32)
+        self.y2 = self.rgb2gray(self.y)
+        self.y2 = self.bin_action()
+        self.risultato = self.shrove_tuesday()
+        
+    def shrove_tuesday(self):
+        pattern = np.amax(self.x,axis=(0,1))
+        for i in range(self.he):
+            for j in range(self.wi):
+                if (self.y2[i][j]>0):
+                    self.x[i][j]=pattern
+        return self.x 
+    def rgb2gray(self,rgb):
+        r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
+        gray = 0.2989 *r + 0.5870 * g + 0.1140 * b
+        return gray  
+    def bin_action(self):
+        output = self.y2
+        for i in range(self.he):
+            for j in range(self.wi):
+                if (self.y2[i][j]<self.trashold):
+                    output[i][j]=0
+                else:
+                    output[i][j]= 1           
+        return output 
+r= Carnival()
+print (r.risultato)
+msc.toimage(r.risultato , cmin=0.0, cmax=1).save('risultatomaschera.jpg')
