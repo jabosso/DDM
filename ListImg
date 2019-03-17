@@ -1,0 +1,30 @@
+import import_ipynb
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+import scipy.misc
+from UtilFunction import getNpImage
+import math
+
+
+
+imS_array = []
+imP_array = [] 
+list_imgs = [] 
+import os, os.path
+imagesS = os.listdir('ImgSporche')
+imagesP = os.listdir('ImgPulite')
+for i in imagesS:
+    for j in imagesP:
+        pathS = os.path.join('ImgSporche',i)
+        imS = getNpImage(pathS)
+        imS_array.append(np.asarray(imS)) 
+        
+        pathP = os.path.join('ImgPulite',j)
+        imP = getNpImage(pathP)
+        imP_array.append(np.asarray(imP))
+        
+        list_imgs[i][j] = np.concatenate(imS_array[i], imP_array[j])
+
+
+print(list_imgs.shape)
