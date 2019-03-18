@@ -1,0 +1,21 @@
+import import_ipynb,os, os.path
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+import scipy.misc
+from UtilFunction import getNpImage
+import math
+
+imagesS = os.listdir('ImgSporche')
+imagesP = os.listdir('ImgPulite')
+dataSet = np.empty((1,2,1120,881))
+for i in range(len(imagesS)):
+    pathS= os.path.join('ImgSporche',imagesS[i])  
+    imS = getNpImage(pathS)
+    pathP= os.path.join('ImgPulite',imagesP[i])
+    imP = getNpImage(pathP)
+    im_pair = np.concatenate((imS,imP), axis=0)
+    im_pair = np.expand_dims(im_pair, axis=0)
+    dataSet = np.concatenate((dataSet,im_pair),axis=0)
+dataSet = dataSet[1:][:][:][:]
+print(dataSet.shape)
